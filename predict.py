@@ -13,45 +13,98 @@ import numpy as np
 import time
 
 
-parser = argparse.ArgumentParser(description="Joint Extraction of Entities and Relations")
-parser.add_argument('--batch_size', type=int, default=32, metavar='N',
-                    help='batch size (default: 32)')
-parser.add_argument('--cuda', action='store_false',
-                    help='use CUDA (default: True)')
-parser.add_argument('--dropout', type=float, default=0.5,
-                    help='dropout applied to layers (default: 0.5)')
-parser.add_argument('--emb_dropout', type=float, default=0.25,
-                    help='dropout applied to the embedded layer (default: 0.25)')
-parser.add_argument('--clip', type=float, default=0.35,
-                    help='gradient clip, -1 means no clip (default: 0.35)')
-parser.add_argument('--epochs', type=int, default=30,
-                    help='upper epoch limit (default: 30)')
-parser.add_argument('--char_kernel_size', type=int, default=3,
-                    help='character-level kernel size (default: 3)')
-parser.add_argument('--word_kernel_size', type=int, default=3,
-                    help='word-level kernel size (default: 3)')
-parser.add_argument('--emsize', type=int, default=50,
-                    help='size of character embeddings (default: 50)')
-parser.add_argument('--char_layers', type=int, default=3,
-                    help='# of character-level convolution layers (default: 3)')
-parser.add_argument('--word_layers', type=int, default=3,
-                    help='# of word-level convolution layers (default: 3)')
-parser.add_argument('--char_nhid', type=int, default=50,
-                    help='number of hidden units per character-level convolution layer (default: 50)')
-parser.add_argument('--word_nhid', type=int, default=300,
-                    help='number of hidden units per word-level convolution layer (default: 300)')
-parser.add_argument('--log-interval', type=int, default=100, metavar='N',
-                    help='report interval (default: 100)')
-parser.add_argument('--lr', type=float, default=4,
-                    help='initial learning rate (default: 1)')
-parser.add_argument('--optim', type=str, default='SGD',
-                    help='optimizer type (default: SGD)')
-parser.add_argument('--seed', type=int, default=1111,
-                    help='random seed (default: 1111)')
-parser.add_argument('--save', type=str, default='model.pt',
-                    help='path to save the final model')
-parser.add_argument('--weight', type=float, default=10.0,
-                    help='manual rescaling weight given to each tag except "O"')
+parser = argparse.ArgumentParser(
+    description="Joint Extraction of Entities and Relations"
+)
+parser.add_argument(
+    "--batch_size", type=int, default=32, metavar="N", help="batch size (default: 32)"
+)
+parser.add_argument("--cuda", action="store_false", help="use CUDA (default: True)")
+parser.add_argument(
+    "--dropout",
+    type=float,
+    default=0.5,
+    help="dropout applied to layers (default: 0.5)",
+)
+parser.add_argument(
+    "--emb_dropout",
+    type=float,
+    default=0.25,
+    help="dropout applied to the embedded layer (default: 0.25)",
+)
+parser.add_argument(
+    "--clip",
+    type=float,
+    default=0.35,
+    help="gradient clip, -1 means no clip (default: 0.35)",
+)
+parser.add_argument(
+    "--epochs", type=int, default=30, help="upper epoch limit (default: 30)"
+)
+parser.add_argument(
+    "--char_kernel_size",
+    type=int,
+    default=3,
+    help="character-level kernel size (default: 3)",
+)
+parser.add_argument(
+    "--word_kernel_size",
+    type=int,
+    default=3,
+    help="word-level kernel size (default: 3)",
+)
+parser.add_argument(
+    "--emsize", type=int, default=50, help="size of character embeddings (default: 50)"
+)
+parser.add_argument(
+    "--char_layers",
+    type=int,
+    default=3,
+    help="# of character-level convolution layers (default: 3)",
+)
+parser.add_argument(
+    "--word_layers",
+    type=int,
+    default=3,
+    help="# of word-level convolution layers (default: 3)",
+)
+parser.add_argument(
+    "--char_nhid",
+    type=int,
+    default=50,
+    help="number of hidden units per character-level convolution layer (default: 50)",
+)
+parser.add_argument(
+    "--word_nhid",
+    type=int,
+    default=300,
+    help="number of hidden units per word-level convolution layer (default: 300)",
+)
+parser.add_argument(
+    "--log-interval",
+    type=int,
+    default=100,
+    metavar="N",
+    help="report interval (default: 100)",
+)
+parser.add_argument(
+    "--lr", type=float, default=4, help="initial learning rate (default: 1)"
+)
+parser.add_argument(
+    "--optim", type=str, default="SGD", help="optimizer type (default: SGD)"
+)
+parser.add_argument(
+    "--seed", type=int, default=1111, help="random seed (default: 1111)"
+)
+parser.add_argument(
+    "--save", type=str, default="model.pt", help="path to save the final model"
+)
+parser.add_argument(
+    "--weight",
+    type=float,
+    default=10.0,
+    help='manual rescaling weight given to each tag except "O"',
+)
 args = parser.parse_args()
 
 # Set the random seed manually for reproducibility.
@@ -70,17 +123,18 @@ vocab.load("data/NYT_CoType/vocab.txt")
 tag_set = Index()
 tag_set.load("data/NYT_CoType/tag2id.txt")
 relation_labels = Index()
-relation_labels.load('data/NYT_CoType/relation_labels.txt')
+relation_labels.load("data/NYT_CoType/relation_labels.txt")
 
-test_data = load('data/NYT_CoType/test.pk')
+test_data = load("data/NYT_CoType/test.pk")
 val_size = int(0.01 * len(train_data))
-train_data, val_data = random_split(train_data, [len(train_data)-val_size, val_size])
+train_data, val_data = random_split(train_data, [len(train_data) - val_size, val_size])
 
 
-#torch.Size([47463, 300])
+# torch.Size([47463, 300])
+
 
 def group(data, breakpoints):
-    groups = [[] for _ in range(len(breakpoints)+1)]
+    groups = [[] for _ in range(len(breakpoints) + 1)]
     for idx, item in enumerate(data):
         i = bisect.bisect_left(breakpoints, len(item[0]))
         groups[i].append(idx)
@@ -97,8 +151,15 @@ class GroupBatchRandomSampler(object):
     def __init__(self, data_groups, batch_size, drop_last):
         self.batch_indices = []
         for data_group in data_groups:
-            self.batch_indices.extend(list(BatchSampler(SubsetRandomSampler(data_group.indices),
-                                                        batch_size, drop_last=drop_last)))
+            self.batch_indices.extend(
+                list(
+                    BatchSampler(
+                        SubsetRandomSampler(data_group.indices),
+                        batch_size,
+                        drop_last=drop_last,
+                    )
+                )
+            )
 
     def __iter__(self):
         return (self.batch_indices[i] for i in torch.randperm(len(self.batch_indices)))
@@ -112,14 +173,28 @@ def get_batch(batch_indices, data):
     sorted_batch = sorted(batch, key=lambda x: len(x[0]), reverse=True)
     sentences, tokens, tags = zip(*sorted_batch)
 
-    padded_sentences, lengths = pad_packed_sequence(pack_sequence([torch.LongTensor(_) for _ in sentences]),
-                                                    batch_first=True, padding_value=vocab["<pad>"])
-    padded_tokens, _ = pad_packed_sequence(pack_sequence([torch.LongTensor(_) for _ in tokens]),
-                                           batch_first=True, padding_value=charset["<pad>"])
-    padded_tags, _ = pad_packed_sequence(pack_sequence([torch.LongTensor(_) for _ in tags]),
-                                         batch_first=True, padding_value=tag_set["O"])
+    padded_sentences, lengths = pad_packed_sequence(
+        pack_sequence([torch.LongTensor(_) for _ in sentences]),
+        batch_first=True,
+        padding_value=vocab["<pad>"],
+    )
+    padded_tokens, _ = pad_packed_sequence(
+        pack_sequence([torch.LongTensor(_) for _ in tokens]),
+        batch_first=True,
+        padding_value=charset["<pad>"],
+    )
+    padded_tags, _ = pad_packed_sequence(
+        pack_sequence([torch.LongTensor(_) for _ in tags]),
+        batch_first=True,
+        padding_value=tag_set["O"],
+    )
 
-    return padded_sentences.to(device), padded_tokens.to(device), padded_tags.to(device), lengths.to(device)
+    return (
+        padded_sentences.to(device),
+        padded_tokens.to(device),
+        padded_tags.to(device),
+        lengths.to(device),
+    )
 
 
 word_embeddings = torch.tensor(np.load("data/NYT_CoType/word2vec.vectors.npy"))
@@ -130,16 +205,27 @@ word_embeddings = torch.cat([pad_embedding, unk_embedding, word_embeddings])
 
 
 char_channels = [args.emsize] + [args.char_nhid] * args.char_layers
-word_channels = [word_embedding_size + args.char_nhid] + [args.word_nhid] * args.word_layers
+word_channels = [word_embedding_size + args.char_nhid] + [
+    args.word_nhid
+] * args.word_layers
 
 if os.path.exists("model.pt"):
-    model=torch.load('model.pt')
+    model = torch.load("model.pt")
 else:
-    model = Model(charset_size=len(charset), char_embedding_size=args.emsize, char_channels=char_channels,
-                  char_padding_idx=charset["<pad>"], char_kernel_size=args.char_kernel_size, weight=word_embeddings,
-                  word_embedding_size=word_embedding_size, word_channels=word_channels,
-                  word_kernel_size=args.word_kernel_size, num_tag=len(tag_set), dropout=args.dropout,
-                  emb_dropout=args.emb_dropout).to(device)
+    model = Model(
+        charset_size=len(charset),
+        char_embedding_size=args.emsize,
+        char_channels=char_channels,
+        char_padding_idx=charset["<pad>"],
+        char_kernel_size=args.char_kernel_size,
+        weight=word_embeddings,
+        word_embedding_size=word_embedding_size,
+        word_channels=word_channels,
+        word_kernel_size=args.word_kernel_size,
+        num_tag=len(tag_set),
+        dropout=args.dropout,
+        emb_dropout=args.emb_dropout,
+    ).to(device)
 
 
 weight = [args.weight] * len(tag_set)
@@ -147,6 +233,7 @@ weight[tag_set["O"]] = 1
 weight = torch.tensor(weight).to(device)
 criterion = nn.NLLLoss(weight, size_average=False)
 optimizer = getattr(optim, args.optim)(model.parameters(), lr=args.lr)
+
 
 def evaluate(data_groups):
     model.eval()
@@ -156,7 +243,9 @@ def evaluate(data_groups):
     TP_FP = 0
     TP_FN = 0
     with torch.no_grad():
-        for batch_indices in GroupBatchRandomSampler(data_groups, args.batch_size, drop_last=False):
+        for batch_indices in GroupBatchRandomSampler(
+            data_groups, args.batch_size, drop_last=False
+        ):
             sentences, tokens, targets, lengths = get_batch(batch_indices, train_data)
             output = model(sentences, tokens)
             tp, tp_fp, tp_fn = measure(output, targets, lengths)
@@ -168,7 +257,7 @@ def evaluate(data_groups):
             loss = criterion(output, targets)
             total_loss += loss.item()
             count += len(targets)
-    return total_loss / count, TP/TP_FP, TP/TP_FN, 2*TP/(TP_FP+TP_FN)
+    return total_loss / count, TP / TP_FP, TP / TP_FN, 2 * TP / (TP_FP + TP_FN)
 
 
 def measure(output, targets, lengths):
@@ -225,16 +314,18 @@ def get_triplets(tags):
 
 if __name__ == "__main__":
     # Load the best saved model.
-    with open(args.save, 'rb') as f:
+    with open(args.save, "rb") as f:
         model = torch.load(f)
 
     # Run on test data
     test_loss, precision, recall, f1 = evaluate(test_data_groups)
     print("=" * 118)
-    print("| End of Training | Test Loss {:5.3f} | Precision {:5.3f} "
-          "| Recall {:5.3f} | F1 {:5.3f} |".format(test_loss, precision, recall, f1))
+    print(
+        "| End of Training | Test Loss {:5.3f} | Precision {:5.3f} "
+        "| Recall {:5.3f} | F1 {:5.3f} |".format(test_loss, precision, recall, f1)
+    )
     print("=" * 118)
-'''
+"""
 charset_size: 96
 char_embedding_size: 50
 char_channels: [50, 50, 50, 50]
@@ -254,4 +345,4 @@ num_tag: 193
 dropout: (0.5,)
 emb_dropout: 0.25
 
-'''
+"""

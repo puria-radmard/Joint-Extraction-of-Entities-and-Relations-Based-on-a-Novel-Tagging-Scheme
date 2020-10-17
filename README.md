@@ -29,7 +29,9 @@ and [Joint Extraction of Entities and Relations Based on a Novel Tagging Scheme]
     ./conv_net:CNN model
 
 # how to run:
-
+	
+    cd data/N*
+    python donwload*.py
     python word2vec.py
     python data
     python train.py

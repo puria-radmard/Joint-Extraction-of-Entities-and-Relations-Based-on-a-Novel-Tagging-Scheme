@@ -1,5 +1,6 @@
 import string
 import pickle
+from io import open
 
 
 class Index(object):
@@ -23,12 +24,12 @@ class Index(object):
         return len(self.idx2key)
 
     def save(self, f):
-        with open(f, 'wt', encoding='utf-8') as fout:
+        with open(f, "wt", encoding="utf-8") as fout:
             for index, key in enumerate(self.idx2key):
-                fout.write(key + '\t' + str(index) + '\n')
+                fout.write(key + "\t" + str(index) + "\n")
 
     def load(self, f):
-        with open(f, 'rt', encoding='utf-8') as fin:
+        with open(f, "rt", encoding="utf-8") as fin:
             for line in fin:
                 line = line.strip()
                 if not line:
@@ -39,8 +40,8 @@ class Index(object):
 
 class Charset(Index):
     def __init__(self):
-        super().__init__()
-        for char in string.printable[0:-6]:#所有的字母加符号
+        super(Charset, self).__init__()
+        for char in string.printable[0:-6]:
             self.add(char)
         self.add("<pad>")
         self.add("<unk>")
@@ -60,19 +61,19 @@ class Charset(Index):
     def __getitem__(self, key):
         if isinstance(key, str) and key not in self.key2idx:
             return self.key2idx["<unk>"]
-        return super().__getitem__(key)
+        return super(Charset, self).__getitem__(key)
 
 
 class Vocabulary(Index):
     def __init__(self):
-        super().__init__()
+        super(Vocabulary, self).__init__()
         self.add("<pad>")
         self.add("<unk>")
 
     def __getitem__(self, key):
         if isinstance(key, str) and key not in self.key2idx:
             return self.key2idx["<unk>"]
-        return super().__getitem__(key)
+        return super(Vocabulary, self).__getitem__(key)
 
 
 def prepare_sequence(seq, to_idx):
@@ -80,18 +81,18 @@ def prepare_sequence(seq, to_idx):
 
 
 def save(obj, path):
-    with open(path, 'wb') as f:
+    with open(path, "wb") as f:
         pickle.dump(obj, f)
 
 
 def load(path):
-    with open(path, 'rb') as f:
+    with open(path, "rb") as f:
         return pickle.load(f)
 
 
 def time_display(s):
-    d = s // (3600*24)
-    s -= d * (3600*24)
+    d = s // (3600 * 24)
+    s -= d * (3600 * 24)
     h = s // 3600
     s -= h * 3600
     m = s // 60

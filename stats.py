@@ -20,7 +20,7 @@ def triplet_stats(fin):
 
 def sentence_length_stats():
     length_dict = {}
-    with open('data/NYT_CoType/corpus.txt', 'rt', encoding='utf-8') as fin:
+    with open("data/NYT_CoType/corpus.txt", "rt", encoding="utf-8") as fin:
         for line in fin:
             sentence = line.strip().split()
             length = len(sentence)
@@ -28,13 +28,13 @@ def sentence_length_stats():
                 length_dict[length] = 1
             else:
                 length_dict[length] = length_dict[length] + 1
-    with open('data/NYT_CoType/sentence_length_stats.pk', 'wb') as f:
+    with open("data/NYT_CoType/sentence_length_stats.pk", "wb") as f:
         pickle.dump(length_dict, f)
 
 
 def token_length_stats():
     length_dict = {}
-    with open('data/NYT_CoType/corpus.txt', 'rt', encoding='utf-8') as fin:
+    with open("data/NYT_CoType/corpus.txt", "rt", encoding="utf-8") as fin:
         for line in fin:
             sentence = line.strip().split()
             for word in sentence:
@@ -43,7 +43,7 @@ def token_length_stats():
                     length_dict[length] = 1
                 else:
                     length_dict[length] = length_dict[length] + 1
-    with open('data/NYT_CoType/token_length_stats.pk', 'wb') as f:
+    with open("data/NYT_CoType/token_length_stats.pk", "wb") as f:
         pickle.dump(length_dict, f)
 
 
@@ -60,37 +60,50 @@ def show_length(length_dict, groups):
                 break
 
     print("-" * 36)
-    print("| (  0, {:3d}] | {:8d} | {:7.3f}% |".format(groups[0], length_groups[0], length_groups[0]/total*100))
+    print(
+        "| (  0, {:3d}] | {:8d} | {:7.3f}% |".format(
+            groups[0], length_groups[0], length_groups[0] / total * 100
+        )
+    )
     for i in range(1, len(length_groups)):
-        print("| ({:3d}, {:3d}] | {:8d} | {:7.3f}% |"
-              .format(groups[i-1], groups[i], length_groups[i], length_groups[i]/total*100))
+        print(
+            "| ({:3d}, {:3d}] | {:8d} | {:7.3f}% |".format(
+                groups[i - 1],
+                groups[i],
+                length_groups[i],
+                length_groups[i] / total * 100,
+            )
+        )
     print("-" * 36)
-    print("|    Total   | {:8d} | {:7.3f}% |"
-          .format(sum(length_groups), sum(length_groups) / total * 100))
+    print(
+        "|    Total   | {:8d} | {:7.3f}% |".format(
+            sum(length_groups), sum(length_groups) / total * 100
+        )
+    )
     print("-" * 36)
     print("Max Length: {:d}".format(max_length))
 
 
 if __name__ == "__main__":
-    if not os.path.exists('data/NYT_CoType/sentence_length_stats.pk'):
+    if not os.path.exists("data/NYT_CoType/sentence_length_stats.pk"):
         sentence_length_stats()
-    with open('data/NYT_CoType/sentence_length_stats.pk', 'rb') as f:
+    with open("data/NYT_CoType/sentence_length_stats.pk", "rb") as f:
         length_dict = pickle.load(f)
     groups = list(range(10, 110, 10))
     show_length(length_dict, groups)
 
-    if not os.path.exists('data/NYT_CoType/token_length_stats.pk'):
+    if not os.path.exists("data/NYT_CoType/token_length_stats.pk"):
         token_length_stats()
-    with open('data/NYT_CoType/token_length_stats.pk', 'rb') as f:
+    with open("data/NYT_CoType/token_length_stats.pk", "rb") as f:
         length_dict = pickle.load(f)
     groups = list(range(5, 25, 3))
     show_length(length_dict, groups)
 
     print()
-    with open('data/NYT_CoType/train.json', 'rt', encoding='utf-8') as fin:
+    with open("data/NYT_CoType/train.json", "rt", encoding="utf-8") as fin:
         valid, total = triplet_stats(fin)
         print("Train\n\tValid Triplets: {}\n\tTotal Triplets: {}".format(valid, total))
-    with open('data/NYT_CoType/test.json', 'rt', encoding='utf-8') as fin:
+    with open("data/NYT_CoType/test.json", "rt", encoding="utf-8") as fin:
         valid, total = triplet_stats(fin)
         print("Test\n\tValid Triplets: {}\n\tTotal Triplets: {}".format(valid, total))
 
