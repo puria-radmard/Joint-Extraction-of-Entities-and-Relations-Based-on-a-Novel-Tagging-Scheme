@@ -32,7 +32,6 @@ class ActiveLearningDataset(object):
         word_scoring_func: function used to score single words
         Inputs:
             output: Tensor, shape (batch size, sequence length, number of possible tags), model outputs of all instances
-            targets: Tensor, shape (batch size, sequence length), ground truth, indexing output
         Outputs:
             a score, with higher meaning better to pick
 
@@ -42,10 +41,8 @@ class ActiveLearningDataset(object):
 
         # !!! Right now, following the pipeline, we assume we can do word-wise aggregation of scores
         # This might have to change....
-        self.word_scoring_func = nn.NLLLoss(reduce=False)
-        # True means we do 1-mean(word scores) like with MLP, False means we do mean(word scores) like with BALD
-        self.inverse_score_flag = True
-
+        self.word_scoring_func = self.lc_scoring
+        self.score_aggregation = self.lc_aggregation
         self.score_extraction = self.full_sentence_extraction  # The baseline
 
         self.budget = budget
@@ -66,18 +63,27 @@ class ActiveLearningDataset(object):
         self.device = device
 
     @staticmethod
-    def full_sentence_extraction(scores_list):
+    def lc_scoring(sentences, tokens, model):
+        model_output = model(
+            sentences, tokens
+        )  # Probabilities of shape [batch_size (1), length_of_sentence, num_tags (193)]
+        return model_output
+
+    @staticmethod
+    def lc_aggregation(scores_list):
+        sentence_score = 1 - sum([np.log(p) for p in scores_list])
+        return sentence_score
+
+    def full_sentence_extraction(self, scores_list):
         """
         Input:
             scores_list: [list, of, scores, from, a, sentence, None, None]
-            None represents previously labelled word - which will not appear for this strategy
+            None REPRESENTS PREVIOUSLY LABELLED WORD - WHICH WILL NOT APPEAR FOR THIS STRATEGY
         Output:
             entries = [([list, of, word, idx], score), ...] for all possible extraction batches
             For this strategy, entries is one element, with all the indices of this sentence
         """
-        score = mean(scores_list)
-        indices = list(range(len(scores_list)))
-
+        score = self.lc_aggregation(scores_list)
         return [(score, indices)]
 
     def random_init(self):
@@ -100,15 +106,20 @@ class ActiveLearningDataset(object):
         if not device:
             device = self.device
 
-        # Will have to change this to extend to BALD, as it requires multiple model passes
         sentences, tokens, targets, lengths = get_batch(batch_index, train_data, device)
-        output = model(sentences, tokens)
-        output = pack_padded_sequence(output, lengths, batch_first=True).data
-        targets = pack_padded_sequence(targets, lengths, batch_first=True).data
-        word_scores = self.word_scoring_func(
-            output, targets
-        )  # Without per-word reduction, i.e. a list of scores of size sentence size
+        word_scores = self.word_scoring_func(sentences, tokens, model)
         return word_scores
+
+    @staticmethod
+    def is_disjoint(sentence_idx, entry, temp_score_list):
+        same_sentence_phrases = [
+            a[1] for a in temp_score_list if a[0] == sentence_idx
+        ]  # Already selected phrases from this sentence
+        for ph in same_sentence_phrases:
+            if list(set(ph) & set(entry[0])):
+                return False
+        else:
+            return True
 
     def extend_indices(self, sentence_scores):
         """
@@ -140,7 +151,9 @@ class ActiveLearningDataset(object):
                 scores_list
             )  # [([list, of, word, idx], score), ...] that can be compared to temp_score_list
             for entry in entries:
-                if entry[-1] > min(scores_from_temp_dict()):
+                if entry[-1] > min(scores_from_temp_dict()) and self.is_disjoint(
+                    sentence_idx, entry, temp_score_list
+                ):
                     temp_score_list[0] = [sentence_idx, entry]
                     temp_score_list.sort(key=lambda y: y[-1])
                 else:
@@ -193,7 +206,7 @@ class ActiveLearningDataset(object):
                 drop_last=self.drop_last,
             )
         )
-    
+
     def __iter__(self):
         # TODO: Write get_batch_active which decides which ones to hand/auto-label
         return (
