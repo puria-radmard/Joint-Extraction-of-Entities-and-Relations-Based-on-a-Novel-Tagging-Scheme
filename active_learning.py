@@ -12,7 +12,7 @@ import torch.nn as nn
 import torch.optim as optim
 import numpy as np
 import time
-
+from tqdm import tqdm
 
 class ActiveLearningDataset(object):
     def __init__(
@@ -66,13 +66,14 @@ class ActiveLearningDataset(object):
     def lc_scoring(sentences, tokens, model):
         model_output = model(
             sentences, tokens
-        )  # Probabilities of shape [batch_size (1), length_of_sentence, num_tags (193)]
+        )  # Log probabilities of shape [batch_size (1), length_of_sentence, num_tags (193)]
+        model_output = model_output[0].max(dim = 1)[0]
         return model_output
 
     @staticmethod
     def lc_aggregation(scores_list):
-        sentence_score = 1 - sum([np.log(p) for p in scores_list])
-        return sentence_score
+        sentence_score = 1 - sum(scores_list)
+        return sentence_score, list(range(len(scores_list)))
 
     def full_sentence_extraction(self, scores_list):
         """
@@ -83,8 +84,8 @@ class ActiveLearningDataset(object):
             entries = [([list, of, word, idx], score), ...] for all possible extraction batches
             For this strategy, entries is one element, with all the indices of this sentence
         """
-        score = self.lc_aggregation(scores_list)
-        return [(score, indices)]
+        score, indices = self.lc_aggregation(scores_list)
+        return [(indices, score)]
 
     def random_init(self):
         """
@@ -142,7 +143,7 @@ class ActiveLearningDataset(object):
         temp_score_list = [
             (-1, [], -np.inf) for _ in range(self.round_size)
         ]  # (sentence_idx, [list, of, word, idx], score) to be added to self.labelled_idx at the end
-        scores_from_temp_dict = lambda x=temp_score_list: [
+        scores_from_temp_list = lambda x=temp_score_list: [
             a[-1] for a in x
         ]  # Get list of scores
 
@@ -151,10 +152,10 @@ class ActiveLearningDataset(object):
                 scores_list
             )  # [([list, of, word, idx], score), ...] that can be compared to temp_score_list
             for entry in entries:
-                if entry[-1] > min(scores_from_temp_dict()) and self.is_disjoint(
+                if entry[-1] > min(scores_from_temp_list()) and self.is_disjoint(
                     sentence_idx, entry, temp_score_list
                 ):
-                    temp_score_list[0] = [sentence_idx, entry]
+                    temp_score_list[0] = (sentence_idx, entry[0], entry[1])
                     temp_score_list.sort(key=lambda y: y[-1])
                 else:
                     pass
@@ -173,17 +174,18 @@ class ActiveLearningDataset(object):
         Add the highest scoring instance indices in the dataset to self.labelled_idx
         """
         sentence_scores = {}
-        for idx, batch_index in enumerate(self.unlabelled_batch_indices):
-
+        for idx, batch_index in enumerate(tqdm(self.unlabelled_batch_indices)):
             word_scores = self.scores_from_batch_idx(
                 model, batch_index
             )  # Get raw score tensor for that sentence
             b = batch_index[0]
             sentence_scores[b] = [
-                int(score[j]) if j in self.unlabelled_idx[b] else None
-                for j in range(len(score))
-            ]  # scores of unlabelled words --> int, scores of labelled words --> None
-
+                float(word_scores[j]) if j in self.unlabelled_idx[b] else None
+                for j in range(len(word_scores))
+            ]  # scores of unlabelled words --> float, scores of labelled words --> None
+            if (idx+1) % 100 == 0:
+                break
+        
         self.extend_indices(sentence_scores)
 
     def update_datasets(self):
@@ -207,6 +209,19 @@ class ActiveLearningDataset(object):
             )
         )
 
+        unlabelled_sentence_idx = [
+            j for j in self.unlabelled_idx.keys() if self.unlabelled_idx[j]
+        ]
+        unlabelled_subset = Subset(self.train_data, unlabelled_sentence_idx)
+
+        self.unlabelled_batch_indices = list(
+            BatchSampler(
+                SequentialSampler(unlabelled_subset.indices),
+                1,
+                drop_last=self.drop_last,
+            )
+        )
+
     def __iter__(self):
         # TODO: Write get_batch_active which decides which ones to hand/auto-label
         return (
@@ -216,6 +231,3 @@ class ActiveLearningDataset(object):
 
     def __len__(self):
         return len(self.labelled_batch_indices)
-
-
-# from train import *; from active_learning import ActiveLearningDataset; a = ActiveLearningDataset(train_data, test_data, 5, 6000, args.batch_size)
