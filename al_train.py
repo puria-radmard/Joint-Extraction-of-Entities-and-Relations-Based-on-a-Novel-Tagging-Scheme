@@ -284,7 +284,7 @@ if __name__ == "__main__":
     model = make_model()
     optimizer = getattr(optim, args.optim)(model.parameters(), lr=args.lr)
 
-    a = FullSentenceLowestConfidence(
+    agent = FullSentenceLowestConfidence(
         train_data=train_data,
         test_data=test_data,
         num_sentences_init=int(len(train_data) * 0.1),
@@ -293,7 +293,7 @@ if __name__ == "__main__":
         model=model,
     )
 
-    while a.budget > 0:
+    while agent.budget > 0:
 
         best_val_loss = None
         lr = args.lr
@@ -305,7 +305,7 @@ if __name__ == "__main__":
         start_time = time.time()
         print("-" * 118)
 
-        word_inds = [v for k, v in a.labelled_idx.items() if v]
+        word_inds = [v for k, v in agent.labelled_idx.items() if v]
         num_sentences = len(word_inds)
         num_words = sum([len(b) for b in word_inds])
 
@@ -317,7 +317,7 @@ if __name__ == "__main__":
             if early_stopping(all_f1, 5):
                 break
             
-            train(model=model, al_agent=a)
+            train(model=model, al_agent=agent)
 
             val_loss, precision, recall, f1 = evaluate(model, val_data_groups)
 
@@ -368,6 +368,6 @@ if __name__ == "__main__":
                 )
             )
 
-        a.update_indices(model)
+        agent.update_indices(model)
         import pdb; pdb.set_trace()
-        a.update_datasets(model)
+        agent.update_datasets(model)

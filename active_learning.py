@@ -106,6 +106,10 @@ class ActiveLearningDataset(object):
         else:
             return True
 
+    def purify_entries(self, entries):
+        """Sort and remove disjoint"""
+        return entries
+
     def extend_indices(self, sentence_scores):
         """
         After a full pass on the unlabelled pool, apply a policy to get the top scoring phrases and add them to self.labelled_idx.
@@ -136,11 +140,10 @@ class ActiveLearningDataset(object):
             if all([type(j) == type(None) for j in scores_list]):
                 continue
             entries = self.score_extraction(scores_list)
+            entries = self.purify_entries(entries)
             # entries = [([list, of, word, idx], score), ...] that can be compared to temp_score_list
             for entry in entries:
-                if entry[-1] > min([a[-1] for a in temp_score_list]) and self.is_disjoint(
-                    sentence_idx, entry, temp_score_list
-                ):
+                if entry[-1] > temp_score_list[0][-1]:
                     temp_score_list[0] = (sentence_idx, entry[0], entry[1])
                     temp_score_list.sort(key=lambda y: y[-1])
                 else:
