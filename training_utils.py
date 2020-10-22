@@ -20,8 +20,9 @@ tag_set.load("data/NYT_CoType/tag2id.txt")
 relation_labels = Index()
 relation_labels.load("data/NYT_CoType/relation_labels.txt")
 
-train_data = load("data/NYT_CoType/train.pk")
-test_data = load("data/NYT_CoType/test.pk")
+train_data = load("data/NYT_CoType/train.pk")[:10000]
+test_data = load("data/NYT_CoType/test.pk")[:10000]
+# CHANGED FOR DEBUG
 val_size = int(0.01 * len(train_data))
 train_data, val_data = random_split(train_data, [len(train_data) - val_size, val_size])
 
